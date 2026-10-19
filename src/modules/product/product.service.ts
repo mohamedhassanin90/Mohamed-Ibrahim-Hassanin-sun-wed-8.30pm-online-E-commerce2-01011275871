@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { Model, Types } from "mongoose";
@@ -20,43 +24,74 @@ export class ProductService {
     userId: Types.ObjectId,
     files: Express.Multer.File[],
   ) {
+    if (createProductDto.salePrice > createProductDto.originalPrice)
+      throw new BadRequestException(
+        "Sale price cannot exceed the original price",
+      );
+
     const brandExists = await this.brandModel.findById(createProductDto.brand);
 
-    if (!brandExists) return new NotFoundException("Brand Not Found");
+    if (!brandExists) throw new NotFoundException("Brand Not Found");
 
     const categoryExist = await this.categoryModel.findById(
       createProductDto.category,
     );
 
-    if (!categoryExist) return new NotFoundException("Category Not Found");
+    if (!categoryExist) throw new NotFoundException("Category Not Found");
 
-    const images: string[] = [];
-    if (files?.length) {
-      for (const file of files) {
-        images.push(`./src/uploads/products/${file.filename}`);
-      }
-    }
-    const product = await this.productModel.create({
+    const images =
+      files?.map((file) => `./src/uploads/products/${file.filename}`) ?? [];
+    return this.productModel.create({
       ...createProductDto,
       images,
       createdBy: userId,
     });
-    return product;
   }
 
   findAll() {
-    return `This action returns all product`;
+    return this.productModel.find().sort({ createdAt: -1 });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findOne(id: string) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid product id");
+
+    const product = await this.productModel.findById(id);
+    if (!product) throw new NotFoundException("Product Not Found");
+    return product;
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: string, updateProductDto: UpdateProductDto) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid product id");
+
+    if (updateProductDto.brand) {
+      const brandExists = await this.brandModel.findById(
+        updateProductDto.brand,
+      );
+      if (!brandExists) throw new NotFoundException("Brand Not Found");
+    }
+
+    if (updateProductDto.category) {
+      const categoryExists = await this.categoryModel.findById(
+        updateProductDto.category,
+      );
+      if (!categoryExists) throw new NotFoundException("Category Not Found");
+    }
+
+    const product = await this.productModel.findById(id);
+    if (!product) throw new NotFoundException("Product Not Found");
+
+    Object.assign(product, updateProductDto);
+    return product.save();
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  async remove(id: string) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid product id");
+
+    const product = await this.productModel.findByIdAndDelete(id);
+    if (!product) throw new NotFoundException("Product Not Found");
+    return { message: "Product deleted successfully", data: product };
   }
 }

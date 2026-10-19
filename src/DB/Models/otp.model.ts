@@ -1,12 +1,6 @@
-import {
-  MongooseModule,
-  Prop,
-  Schema,
-  SchemaFactory,
-  Virtual,
-} from "@nestjs/mongoose";
-import mongoose, { HydratedDocument, Mongoose, Types } from "mongoose";
-import { GenderEnum, OtpEnum, ProviderEnum } from "src/common/enums/user.enum";
+import { MongooseModule, Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import mongoose, { HydratedDocument, Types } from "mongoose";
+import { OtpEnum } from "src/common/enums/user.enum";
 import { emailEvents } from "src/common/utils/events/email.events";
 import { hash } from "src/common/utils/hashing/hash";
 import { User } from "./user.model";
@@ -47,7 +41,7 @@ export class Otp {
 export const otpSchema = SchemaFactory.createForClass(Otp);
 export type HOtpDocument = HydratedDocument<Otp>;
 
-otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); //ttl "time to live"
+otpSchema.index({ expiredAt: 1 }, { expireAfterSeconds: 0 });
 otpSchema.pre(
   "save",
   async function (this: HOtpDocument & { wasNew: boolean; plainotp?: string }) {
@@ -59,14 +53,15 @@ otpSchema.pre(
     }
   },
 );
-otpSchema.post("save", async function (doc, next) {
+otpSchema.post("save", async function () {
   const that = this as HOtpDocument & { wasNew?: boolean; plainotp?: string };
 
   if (that.wasNew && that.plainotp) {
+    const populated = await that.populate<{ createdBy: User }>("createdBy");
     emailEvents.emit("confirm-email", {
-      to: (that.createdBy as any).email,
+      to: populated.createdBy.email,
       otp: that.plainotp,
-      firstName: (that.createdBy as any).firstName,
+      firstName: populated.createdBy.firstName,
     });
   }
 });

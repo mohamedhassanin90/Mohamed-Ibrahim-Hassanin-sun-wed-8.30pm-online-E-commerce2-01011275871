@@ -1,4 +1,6 @@
+import { Type } from "class-transformer";
 import {
+  IsDate,
   IsNotEmpty,
   IsNumber,
   IsString,
@@ -18,6 +20,7 @@ export class CreateCouponDto {
   @Max(100)
   discountPercent: number;
 
-  @IsNotEmpty()
+  @Type(() => Date)
+  @IsDate()
   expiresAt: Date;
 }

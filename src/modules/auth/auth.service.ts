@@ -9,11 +9,17 @@ import { InjectModel } from "@nestjs/mongoose";
 import { randomUUID } from "crypto";
 import { Model, Types } from "mongoose";
 import { OtpEnum, ProviderEnum } from "src/common/enums/user.enum";
-import { emailEvents } from "src/common/utils/events/email.events";
 import { compare } from "src/common/utils/hashing/hash";
 import { genereteOTP } from "src/common/utils/otp.util";
 import { HOtpDocument, Otp } from "src/DB/Models/otp.model";
 import { HUserDocument, User } from "src/DB/Models/user.model";
+import type {
+  ConfirmEmailInput,
+  CreateUserInput,
+  LoginInput,
+  ResendOtpInput,
+} from "./dto/createUser.dto";
+import type { AuthenticatedRequest } from "src/common/guard/auth.guard";
 
 @Injectable()
 export class AuthService {
@@ -33,7 +39,7 @@ export class AuthService {
       },
     ]);
   }
-  async signup(body: any) {
+  async signup(body: CreateUserInput) {
     const { email, firstName, lastName, password } = body;
     const checkUser = await this.userModel.findOne({ email });
     if (checkUser) throw new ConflictException("User Already Exists");
@@ -47,9 +53,17 @@ export class AuthService {
 
     await this.createOtp(user._id);
 
-    return { message: "User registerd successfully", user };
+    return {
+      message: "User registered successfully",
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    };
   }
-  async resendOtp(resendOtp: any) {
+  async resendOtp(resendOtp: ResendOtpInput) {
     const { email } = resendOtp;
     const checkUser = await this.userModel
       .findOne({
@@ -58,14 +72,20 @@ export class AuthService {
       })
       .populate([{ path: "otp", match: { type: OtpEnum.EMAIL_VERIFICATION } }]);
     if (!checkUser) throw new ConflictException("User Not Found");
-    if (checkUser.otp?.length)
+    const now = new Date();
+    if (checkUser.otp?.some((otp) => otp.expiredAt > now))
       throw new ConflictException("Otp Already Exists");
 
+    await this.otpModel.deleteMany({
+      createdBy: checkUser._id,
+      type: OtpEnum.EMAIL_VERIFICATION,
+      expiredAt: { $lte: now },
+    });
     await this.createOtp(checkUser._id);
 
     return { message: "Otp Sent Successfully" };
   }
-  async confirmEmail(confirmEmail: any) {
+  async confirmEmail(confirmEmail: ConfirmEmailInput) {
     const { email, otp } = confirmEmail;
 
     const user = await this.userModel
@@ -78,6 +98,8 @@ export class AuthService {
     if (!user) throw new NotFoundException("user not found");
 
     if (!user.otp?.length) throw new NotFoundException("otp not found");
+    if (user.otp[0].expiredAt <= new Date())
+      throw new BadRequestException("otp expired");
 
     if (!(await compare(otp, user.otp[0].code)))
       throw new BadRequestException("otp not valid");
@@ -88,7 +110,7 @@ export class AuthService {
     );
     return { message: "User Confirmed Successfully" };
   }
-  async login(login: any) {
+  async login(login: LoginInput) {
     const { email, password } = login;
 
     const user = await this.userModel.findOne({
@@ -104,11 +126,7 @@ export class AuthService {
 
     const jwtid = randomUUID();
 
-    console.log('JWT secret:', process.env.TOKEN_ACCESS_ADMIN_SECRET);
-  console.log('JWT expire:', process.env.ACCESS_TOKEN_EXPIRE_IN);
-
-
-    const accessToken = await this.jwtService.sign(
+    const accessToken = await this.jwtService.signAsync(
       {
         id: user._id,
         email: user.email,
@@ -119,7 +137,7 @@ export class AuthService {
         jwtid,
       },
     );
-    const refreshToken = await this.jwtService.sign(
+    const refreshToken = await this.jwtService.signAsync(
       {
         id: user._id,
         email: user.email,
@@ -135,10 +153,10 @@ export class AuthService {
       credentials: { accessToken, refreshToken },
     };
   }
-  getProfile(req: any) {
+  getProfile(req: AuthenticatedRequest) {
     return { message: "profile fetched successfully", data: req.user };
   }
-  async uploadfiles(files: Array<Express.Multer.File[]>) {
+  uploadfiles(files: Express.Multer.File[]) {
     return { message: "file uploaded successfully", data: files };
   }
 }

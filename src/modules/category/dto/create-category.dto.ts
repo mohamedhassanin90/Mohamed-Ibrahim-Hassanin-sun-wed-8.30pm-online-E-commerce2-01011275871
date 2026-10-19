@@ -21,10 +21,6 @@ export class CreateCategoryDto {
   @Length(3, 5000)
   description?: string;
 
-  @IsMongoId()
-  @IsNotEmpty()
-  createdBy: Types.ObjectId;
-
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty()

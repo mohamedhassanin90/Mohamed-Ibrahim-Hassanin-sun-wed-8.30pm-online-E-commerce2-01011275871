@@ -1,14 +1,9 @@
-import {
-  MongooseModule,
-  Prop,
-  Schema,
-  SchemaFactory,
-  Virtual,
-} from "@nestjs/mongoose";
-import mongoose, { HydratedDocument, Mongoose, Types } from "mongoose";
+import { MongooseModule, Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import mongoose, { HydratedDocument, Types } from "mongoose";
 import { User } from "./user.model";
 import { Cart } from "./cart.model";
 import { Coupon } from "./coupon.model";
+import { Product } from "./product.model";
 import { OrderStatusEnum, PaymentMethodEnum } from "src/common/enums/user.enum";
 
 @Schema({
@@ -30,6 +25,25 @@ export class Order {
     ref: Cart.name,
   })
   cart: Types.ObjectId;
+
+  @Prop([
+    {
+      product: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: Product.name,
+      },
+      quantity: { type: Number, required: true },
+      price: { type: Number, required: true },
+      total: { type: Number, required: true },
+    },
+  ])
+  items: {
+    product: Types.ObjectId;
+    quantity: number;
+    price: number;
+    total: number;
+  }[];
 
   @Prop({
     type: Number,
@@ -91,12 +105,17 @@ export class Order {
   })
   intentId: string;
 
-    @Prop({
+  @Prop({
+    type: String,
+  })
+  checkoutSessionId: string;
+
+  @Prop({
     type: String,
   })
   refundId: string;
 
-    @Prop({
+  @Prop({
     type: Date,
   })
   refundedAt: Date;

@@ -1,16 +1,10 @@
-import {
-  MongooseModule,
-  Prop,
-  Schema,
-  SchemaFactory,
-  Virtual,
-} from "@nestjs/mongoose";
-import mongoose, { HydratedDocument, Mongoose, Types } from "mongoose";
+import { MongooseModule, Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import mongoose, { HydratedDocument, Types } from "mongoose";
 import slugify from "slugify";
 import { User } from "./user.model";
 
 @Schema({
-  collection: 'brand',
+  collection: "brand",
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
@@ -47,7 +41,7 @@ export class Brand {
 
 export const brandSchema = SchemaFactory.createForClass(Brand);
 export type HBrandDocument = HydratedDocument<Brand>;
-brandSchema.pre("save", async function () {
+brandSchema.pre("save", function () {
   if (this.isModified("name")) {
     this.slug = slugify(this.name, { lower: true });
   }

@@ -55,10 +55,10 @@ export class ProductController {
   create(
     @Body() createProductDto: CreateProductDto,
     @UploadedFiles() files: Express.Multer.File[],
-    @Req() req
+    @Req() req,
   ) {
-    const userId = req.user.id
-    return this.productService.create(createProductDto ,userId ,files);
+    const userId = req.user.id;
+    return this.productService.create(createProductDto, userId, files);
   }
 
   @Get()
@@ -68,16 +68,18 @@ export class ProductController {
 
   @Get(":id")
   findOne(@Param("id") id: string) {
-    return this.productService.findOne(+id);
+    return this.productService.findOne(id);
   }
 
   @Patch(":id")
+  @UseGuards(AuthGuard)
   update(@Param("id") id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productService.update(+id, updateProductDto);
+    return this.productService.update(id, updateProductDto);
   }
 
   @Delete(":id")
+  @UseGuards(AuthGuard)
   remove(@Param("id") id: string) {
-    return this.productService.remove(+id);
+    return this.productService.remove(id);
   }
 }

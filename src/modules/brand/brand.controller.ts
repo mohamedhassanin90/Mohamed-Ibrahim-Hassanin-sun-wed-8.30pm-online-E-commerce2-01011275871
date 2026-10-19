@@ -8,8 +8,9 @@ import {
   Delete,
   UseInterceptors,
   BadRequestException,
-  ValidationPipe,
   UploadedFile,
+  UseGuards,
+  Req,
 } from "@nestjs/common";
 import { BrandService } from "./brand.service";
 import { CreateBrandDto } from "./dto/create-brand.dto";
@@ -17,13 +18,15 @@ import { UpdateBrandDto } from "./dto/update-brand.dto";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname } from "node:path";
-import { Types } from "mongoose";
+import { AuthGuard } from "src/common/guard/auth.guard";
+import type { AuthenticatedRequest } from "src/common/guard/auth.guard";
 
 @Controller("brand")
 export class BrandController {
   constructor(private readonly brandService: BrandService) {}
 
   @Post()
+  @UseGuards(AuthGuard)
   @UseInterceptors(
     FileInterceptor("file", {
       storage: diskStorage({
@@ -51,16 +54,16 @@ export class BrandController {
     }),
   )
   create(
-    @Body("name", new ValidationPipe()) name: string,
-    @Body("createdBy", new ValidationPipe()) createdBy: Types.ObjectId,
+    @Body() body: CreateBrandDto,
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthenticatedRequest,
   ) {
-    const createBrandDto: CreateBrandDto = {
-      name,
-      createdBy,
-      image: file.filename,
-    };
-    return this.brandService.create(createBrandDto);
+    if (!file) throw new BadRequestException("Brand image is required");
+    return this.brandService.create(
+      body,
+      `uploads/brands/${file.filename}`,
+      req.user._id,
+    );
   }
 
   @Get()
@@ -74,6 +77,7 @@ export class BrandController {
   }
 
   @Patch(":id")
+  @UseGuards(AuthGuard)
   @UseInterceptors(
     FileInterceptor("file", {
       storage: diskStorage({
@@ -110,6 +114,7 @@ export class BrandController {
   }
 
   @Delete(":id")
+  @UseGuards(AuthGuard)
   remove(@Param("id") id: string) {
     return this.brandService.remove(id);
   }

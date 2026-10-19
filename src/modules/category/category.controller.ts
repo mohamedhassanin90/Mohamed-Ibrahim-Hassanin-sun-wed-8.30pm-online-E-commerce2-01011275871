@@ -10,6 +10,8 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
+  Req,
 } from "@nestjs/common";
 import { CategoryService } from "./category.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
@@ -17,7 +19,8 @@ import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname } from "node:path";
-import { file } from "zod";
+import { AuthGuard } from "src/common/guard/auth.guard";
+import type { AuthenticatedRequest } from "src/common/guard/auth.guard";
 
 @Controller("category")
 export class CategoryController {
@@ -50,12 +53,18 @@ export class CategoryController {
       },
     }),
   )
+  @UseGuards(AuthGuard)
   create(
     @Body(new ValidationPipe()) createCategoryDto: CreateCategoryDto,
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthenticatedRequest,
   ) {
-    const imagePath = file.path;
-    return this.categoryService.create(createCategoryDto, imagePath);
+    if (!file) throw new BadRequestException("Category image is required");
+    return this.categoryService.create(
+      createCategoryDto,
+      `uploads/categories/${file.filename}`,
+      req.user._id,
+    );
   }
 
   @Get()
@@ -69,7 +78,8 @@ export class CategoryController {
   }
 
   @Patch(":id")
-   @UseInterceptors(
+  @UseGuards(AuthGuard)
+  @UseInterceptors(
     FileInterceptor("file", {
       storage: diskStorage({
         destination: "./src/uploads/categories",
@@ -98,14 +108,15 @@ export class CategoryController {
   update(
     @Param("id") id: string,
     @Body() body: UpdateCategoryDto,
-    @UploadedFile() file:Express.Multer.File
+    @UploadedFile() file: Express.Multer.File,
   ) {
     if (file) body.image = `uploads/categories/${file.filename}`;
-    return this.categoryService.update(id,body)
+    return this.categoryService.update(id, body);
   }
 
   @Delete(":id")
+  @UseGuards(AuthGuard)
   remove(@Param("id") id: string) {
-    return this.categoryService.remove(+id);
+    return this.categoryService.remove(id);
   }
 }

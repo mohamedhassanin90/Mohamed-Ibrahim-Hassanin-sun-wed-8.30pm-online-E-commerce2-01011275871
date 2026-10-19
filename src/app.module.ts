@@ -11,14 +11,20 @@ import { BrandModule } from "./modules/brand/brand.module";
 import { CategoryModule } from "./modules/category/category.module";
 import { ProductModule } from "./modules/product/product.module";
 import { CartModule } from "./modules/cart/cart.module";
-import { CouponModule } from './modules/coupon/coupon.module';
-import { OrderModule } from './modules/order/order.module';
+import { CouponModule } from "./modules/coupon/coupon.module";
+import { OrderModule } from "./modules/order/order.module";
+import { ApolloDriver, ApolloDriverConfig } from "@nestjs/apollo";
+import { GraphQLModule } from "@nestjs/graphql";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: resolve("./config/dev.env"),
       isGlobal: true,
+    }),
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: true,
     }),
 
     MongooseModule.forRoot(process.env.DB_URI as string, {

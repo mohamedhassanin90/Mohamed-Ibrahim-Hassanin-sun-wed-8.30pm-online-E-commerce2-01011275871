@@ -2,12 +2,10 @@ import { Type } from "class-transformer";
 import {
   IsString,
   IsNotEmpty,
-  Length,
   IsOptional,
   IsMongoId,
-  IsArray,
-  ArrayNotEmpty,
-  ArrayUnique,
+  IsInt,
+  Min,
   IsNumber,
 } from "class-validator";
 import { Types } from "mongoose";
@@ -22,14 +20,17 @@ export class CreateProductDto {
   description?: string;
 
   @IsNumber()
+  @Min(0.01)
   @Type(() => Number)
   originalPrice: number;
 
   @IsNumber()
+  @Min(0.01)
   @Type(() => Number)
   salePrice: number;
 
-  @IsNumber()
+  @IsInt()
+  @Min(0)
   @Type(() => Number)
   stock: number;
 

@@ -16,11 +16,11 @@ export enum OtpEnum {
 export enum OrderStatusEnum {
   PLACED = "PLACED",
   PROCCESSING = "PROCCESSING",
-  SHIPPED = "PASSWORD_RESET",
+  SHIPPED = "SHIPPED",
   DELIVERED = "DELIVERED",
   CANCELLED = "CANCELLED",
 }
 export enum PaymentMethodEnum {
   CASH = "CASH",
-  card= "card",
+  card = "card",
 }

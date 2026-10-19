@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from "@nestjs/common";
 import Stripe from "stripe";
 
 @Injectable()
@@ -49,6 +53,24 @@ export class PaymentService {
     return intent;
   }
 
+  async retrieveCheckoutSession(id: string) {
+    return this.stripe.checkout.sessions.retrieve(id);
+  }
+
+  constructWebhookEvent(payload: Buffer, signature: string) {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new InternalServerErrorException(
+        "Stripe webhook secret is not configured",
+      );
+    }
+    return this.stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      webhookSecret,
+    );
+  }
+
   async confirmPaymentIntent(id: string) {
     const intent = await this.retrievePaymentIntent(id);
     if (!intent) throw new BadRequestException("invalid payment intent id");
@@ -56,12 +78,13 @@ export class PaymentService {
     return confirmIntent;
   }
 
-  async createRefund(id: string) {
+  async createRefund(id: string, idempotencyKey: string) {
     const intent = await this.retrievePaymentIntent(id);
     if (!intent) throw new BadRequestException("invalid payment intent id");
-    const refund = await this.stripe.refunds.create({
-      payment_intent: id,
-    });
+    const refund = await this.stripe.refunds.create(
+      { payment_intent: id },
+      { idempotencyKey },
+    );
     return refund;
   }
 }

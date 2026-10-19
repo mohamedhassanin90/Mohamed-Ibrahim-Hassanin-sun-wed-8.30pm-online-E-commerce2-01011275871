@@ -1,4 +1,9 @@
-import { ConflictException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { CreateCouponDto } from "./dto/create-coupon.dto";
 import { UpdateCouponDto } from "./dto/update-coupon.dto";
 import { Model, Types } from "mongoose";
@@ -23,18 +28,41 @@ export class CouponService {
   }
 
   findAll() {
-    return `This action returns all coupon`;
+    return this.couponModel.find().sort({ createdAt: -1 });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} coupon`;
+  async findOne(id: string) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid coupon id");
+    const coupon = await this.couponModel.findById(id);
+    if (!coupon) throw new NotFoundException("Coupon Not Found");
+    return coupon;
   }
 
-  update(id: number, updateCouponDto: UpdateCouponDto) {
-    return `This action updates a #${id} coupon`;
+  async update(id: string, updateCouponDto: UpdateCouponDto) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid coupon id");
+
+    if (updateCouponDto.code) {
+      const duplicate = await this.couponModel.findOne({
+        code: updateCouponDto.code,
+        _id: { $ne: id },
+      });
+      if (duplicate) throw new ConflictException("coupon already exists");
+    }
+
+    const coupon = await this.couponModel.findById(id);
+    if (!coupon) throw new NotFoundException("Coupon Not Found");
+
+    Object.assign(coupon, updateCouponDto);
+    return coupon.save();
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} coupon`;
+  async remove(id: string) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid coupon id");
+    const coupon = await this.couponModel.findByIdAndDelete(id);
+    if (!coupon) throw new NotFoundException("Coupon Not Found");
+    return { message: "Coupon deleted successfully", data: coupon };
   }
 }

@@ -36,16 +36,18 @@ export class CouponController {
 
   @Get(":id")
   findOne(@Param("id") id: string) {
-    return this.couponService.findOne(+id);
+    return this.couponService.findOne(id);
   }
 
   @Patch(":id")
+  @UseGuards(AuthGuard)
   update(@Param("id") id: string, @Body() updateCouponDto: UpdateCouponDto) {
-    return this.couponService.update(+id, updateCouponDto);
+    return this.couponService.update(id, updateCouponDto);
   }
 
   @Delete(":id")
+  @UseGuards(AuthGuard)
   remove(@Param("id") id: string) {
-    return this.couponService.remove(+id);
+    return this.couponService.remove(id);
   }
 }

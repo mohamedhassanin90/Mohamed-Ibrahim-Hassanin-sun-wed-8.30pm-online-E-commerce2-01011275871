@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,15 +8,23 @@ import { CreateBrandDto } from "./dto/create-brand.dto";
 import { UpdateBrandDto } from "./dto/update-brand.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { Brand } from "src/DB/Models/brand.model";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 
 @Injectable()
 export class BrandService {
   constructor(@InjectModel(Brand.name) private brandModel: Model<Brand>) {}
-  async create(createBrandDto: CreateBrandDto) {
+  async create(
+    createBrandDto: CreateBrandDto,
+    image: string,
+    userId: Types.ObjectId,
+  ) {
     const brand = await this.brandModel.findOne({ name: createBrandDto.name });
     if (brand) throw new ConflictException("this brand already exists");
-    const newBrand = await this.brandModel.create(createBrandDto);
+    const newBrand = await this.brandModel.create({
+      ...createBrandDto,
+      image,
+      createdBy: userId,
+    });
     return newBrand;
   }
 
@@ -24,10 +33,16 @@ export class BrandService {
   }
 
   async findOne(id: string) {
-    return await this.brandModel.findById(id);
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid brand id");
+    const brand = await this.brandModel.findById(id);
+    if (!brand) throw new NotFoundException("Brand Not Found");
+    return brand;
   }
 
   async update(id: string, body: UpdateBrandDto) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid brand id");
     const brand = await this.brandModel.findById(id);
     if (!brand) throw new NotFoundException("Brand Not Found");
 
@@ -39,6 +54,8 @@ export class BrandService {
   }
 
   async remove(id: string) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid brand id");
     const deleteBrand = await this.brandModel.findByIdAndDelete(id);
     if (!deleteBrand) throw new NotFoundException("brand doesn't exist");
 
